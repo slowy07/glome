@@ -55,10 +55,10 @@ typedef struct login_config {
   const char* config_file;
 
   // Login binary for fallback authentication.
-  const char* login_path;
+  const char* login_file;
 
   // Lockdown file to block login if set.
-  const char* lockdown_path;
+  const char* lockdown_file;
 
   // Username triggering a reboot.
   const char* reboot_user;

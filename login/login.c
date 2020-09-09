@@ -213,7 +213,7 @@ int login_run(login_config_t* config, const char** error_tag) {
         "debug: username: %s\n"
         "debug: login: %s\n"
         "debug: auth delay: %d seconds\n",
-        config->options, config->username, config->login_path,
+        config->options, config->username, config->login_file,
         config->auth_delay_sec);
   }
   if (config->options & SYSLOG) {
@@ -238,7 +238,7 @@ int login_run(login_config_t* config, const char** error_tag) {
   }
 
   if ((config->options & SKIP_LOCKDOWN) == 0) {
-    int lockdown = check_lockdown(config->lockdown_path);
+    int lockdown = check_lockdown(config->lockdown_file);
     switch (lockdown) {
       case LOCKDOWN_DISABLED:
         break;
@@ -388,7 +388,7 @@ int login_run(login_config_t* config, const char** error_tag) {
   puts("Authorization code: OK");
   fflush(NULL);
 
-  execl(config->login_path, config->login_path, "-f", config->username,
+  execl(config->login_file, config->login_file, "-f", config->username,
         (char*)NULL);
   perror("ERROR while executing login");
   return failure(EXITCODE_PANIC, error_tag, "login-exec");

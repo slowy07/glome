@@ -93,8 +93,8 @@ int parse_args(login_config_t* config, int argc, char* argv[]) {
 
   // Setting defaults.
   config->reboot_user = DEFAULT_REBOOT_USER;
-  config->login_path = DEFAULT_LOGIN_PATH;
-  config->lockdown_path = NULL;
+  config->login_file = DEFAULT_LOGIN_PATH;
+  config->lockdown_file = NULL;
   config->url_prefix = NULL;
   config->auth_delay_sec = DEFAULT_AUTH_DELAY;
   config->input_timeout_sec = DEFAULT_INPUT_TIMEOUT;
@@ -124,7 +124,7 @@ int parse_args(login_config_t* config, int argc, char* argv[]) {
         config->auth_delay_sec = (unsigned int)l;
         break;
       case 'i':
-        config->lockdown_path = optarg;
+        config->lockdown_file = optarg;
         break;
       case 'k':
         if (decode_hex(config->service_key, sizeof config->service_key,
@@ -133,7 +133,7 @@ int parse_args(login_config_t* config, int argc, char* argv[]) {
         }
         break;
       case 'l':
-        config->login_path = optarg;
+        config->login_file = optarg;
         break;
       case 'r':
         config->reboot_user = optarg;
