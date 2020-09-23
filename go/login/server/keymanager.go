@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package backend implements GLOME-login server framework.
 package server
 
 import (
@@ -22,31 +21,31 @@ import (
 	"github.com/google/glome/go/glome"
 )
 
-// ErrInvalidIndex denotes that an invalid index was provided
-type ErrInvalidIndex struct {
+// ErrInvalidKeyIndex denotes that an invalid index was provided
+type ErrInvalidKeyIndex struct {
 	Index uint8
 }
 
-func (e ErrInvalidIndex) Error() string {
-	return fmt.Sprintf("index should be in range 0-127, found: %v", e.Index)
+func (e ErrInvalidKeyIndex) Error() string {
+	return fmt.Sprintf("key index should be in range 0-127, found: %v", e.Index)
 }
 
 // ErrOverloadedIndex denotes that an invalid index is already in use
-type ErrOverloadedIndex struct {
+type ErrOverloadedKeyIndex struct {
 	Index uint8
 }
 
-func (e ErrOverloadedIndex) Error() string {
-	return fmt.Sprintf("index already in use, found: %v", e.Index)
+func (e ErrOverloadedKeyIndex) Error() string {
+	return fmt.Sprintf("key index already in use, found: %v", e.Index)
 }
 
 // ErrIndexNotFound denotes that an index was not found
-type ErrIndexNotFound struct {
+type ErrKeyIndexNotFound struct {
 	index uint8
 }
 
-func (e ErrIndexNotFound) Error() string {
-	return fmt.Sprintf("index %v not found", e.index)
+func (e ErrKeyIndexNotFound) Error() string {
+	return fmt.Sprintf("key index %v not found", e.index)
 }
 
 // A PrivateKey represent a Private key for a login server. It is a pair composed of a private key
@@ -73,10 +72,10 @@ type KeyManager struct {
 
 func (k *KeyManager) asyncAdd(key glome.PrivateKey, index uint8) error {
 	if index > 127 { // Maybe having a constant in the login library to store this (?)
-		return ErrInvalidIndex{index: index}
+		return ErrInvalidKeyIndex{Index: index}
 	}
 	if _, ok := k.indexToPriv[index]; ok {
-		return ErrOverloadedIndex{index: index}
+		return ErrOverloadedKeyIndex{Index: index}
 	}
 
 	pub, err := key.Public()

@@ -21,36 +21,6 @@ import (
 	"github.com/google/glome/go/glome"
 )
 
-func tests() map[string]*KeyManager {
-	k := map[string]*KeyManager{
-		"empty":   NewKeyManager(),
-		"DropAll": NewKeyManager(),
-		"Add":     NewKeyManager(),
-	}
-
-	k["DropAll"].DropAllReplace(
-		[]PrivateKey{
-			PrivateKey{
-				Value: glome.PrivateKey([32]byte{49, 244, 125, 133, 0, 40, 7,
-					192, 7, 90, 5, 208, 234, 104, 66, 68, 251, 237, 187, 132,
-					67, 236, 108, 164, 162, 199, 41, 89, 128, 95, 26, 190}),
-				Index: 122,
-			},
-			PrivateKey{
-				Value: glome.PrivateKey([32]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-					1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-					1, 1}),
-				Index: 123,
-			},
-		})
-
-	k["Add"].Add(glome.PrivateKey([32]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-		1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-		1, 1}), 123)
-
-	return k
-}
-
 func Contains(list []PublicKey, pub PublicKey) bool {
 	for _, b := range list {
 		if b == pub {
@@ -61,165 +31,201 @@ func Contains(list []PublicKey, pub PublicKey) bool {
 }
 
 func TestKeyAdd(t *testing.T) {
-	for name, manager := range tests() {
-		name := name
-		manager := manager
+	for name, k := range []struct {
+		priv  glome.PrivateKey
+		index uint8
+	}{
+		{
+			priv:  glome.PrivateKey([32]byte{}),
+			index: 0,
+		}, {
+			priv: glome.PrivateKey([32]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+				1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+				1, 1}),
+			index: 1,
+		}, {
+			priv: glome.PrivateKey([32]byte{49, 244, 125, 133, 0, 40, 7,
+				192, 7, 90, 5, 208, 234, 104, 66, 68, 251, 237, 187, 132,
+				67, 236, 108, 164, 162, 199, 41, 89, 128, 95, 26, 190}),
+			index: 2,
+		},
+	} {
+		manager := NewKeyManager()
 
-		t.Run(name, func(t *testing.T) {
-			for _, k := range []struct {
-				priv  glome.PrivateKey
-				index uint8
-			}{
-				{
-					priv:  glome.PrivateKey([32]byte{}),
-					index: 0,
-				}, {
-					priv: glome.PrivateKey([32]byte{1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-						1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-						1, 1}),
-					index: 12,
-				}, {
-					priv: glome.PrivateKey([32]byte{49, 244, 125, 133, 0, 40, 7,
-						192, 7, 90, 5, 208, 234, 104, 66, 68, 251, 237, 187, 132,
-						67, 236, 108, 164, 162, 199, 41, 89, 128, 95, 26, 190}),
-					index: 23,
-				},
-			} {
-				if err := manager.Add(k.priv, k.index); err != nil {
-					t.Fatalf("test %v, unexpected error: %v ", name, err.Error())
-				}
+		if err := manager.Add(k.priv, k.index); err != nil {
+			t.Fatalf("test %v, unexpected error: %v ", name, err.Error())
+		}
 
-				if manager.indexToPriv[k.index] != k.priv {
-					t.Errorf("test %v: private key %v was not added in index %v",
-						name, k.priv, k.index)
-				}
+		readKey, found := manager.Read(k.index)
+		if !found {
+			t.Errorf("test %v: No private key %v was added in index %v",
+				name, k.priv, k.index)
+		}
 
-				pub, err := k.priv.Public()
-				if err != nil {
-					t.Fatalf("test %v, unexpected error: %v ", name, err.Error())
-				}
+		if readKey != k.priv {
+			t.Errorf("test %v: private key %v was not added in index %v",
+				name, k.priv, k.index)
+		}
 
-				if !Contains(manager.publicKeys, PublicKey{Value: *pub, Index: k.index}) {
-					t.Errorf("test %v: public key %v was not added in index %v",
-						name, pub, k.index)
-				}
-			}
-		})
+		pub, err := k.priv.Public()
+		if err != nil {
+			t.Fatalf("test %v, unexpected error: %v ", name, err.Error())
+		}
+
+		if !Contains(manager.publicKeys, PublicKey{Value: *pub, Index: k.index}) {
+			t.Errorf("test %v: public key %v was not added in index %v",
+				name, pub, k.index)
+		}
 	}
 }
 
 func TestKeyAddExceptions(t *testing.T) {
-	for name, manager := range tests() {
-		name := name
-		manager := manager
+	type input struct {
+		manager *KeyManager
+		priv    glome.PrivateKey
+		index   uint8
+	}
 
-		type input struct {
-			priv  glome.PrivateKey
-			index uint8
+	// PreloadManager is manager for test 2
+	preloadManager := NewKeyManager()
+	preloadManager.Add(glome.PrivateKey([32]byte{}), 0)
+
+	for name, k := range []struct {
+		in   input
+		want error
+	}{
+		{
+			in: input{
+				manager: NewKeyManager(),
+				priv:    glome.PrivateKey([32]byte{}),
+				index:   0,
+			},
+			want: nil,
+		}, {
+			in: input{
+				manager: preloadManager,
+				priv:    glome.PrivateKey([32]byte{}),
+				index:   0,
+			},
+			want: ErrOverloadedKeyIndex{Index: 0},
+		}, {
+			in: input{
+				manager: NewKeyManager(),
+				priv:    glome.PrivateKey([32]byte{}),
+				index:   129,
+			},
+			want: ErrInvalidKeyIndex{Index: 129},
+		},
+	} {
+		if err := k.in.manager.Add(k.in.priv, k.in.index); err != k.want {
+			t.Errorf("test %v failed to raises wanted exception on input %#v; got %#v, want %#v",
+				name, k.in, err, k.want)
 		}
-
-		t.Run(name, func(t *testing.T) {
-			for _, k := range []struct {
-				in   input
-				want error
-			}{
-				{in: input{priv: glome.PrivateKey([32]byte{}), index: 0}, want: nil},
-				{in: input{priv: glome.PrivateKey([32]byte{}), index: 0}, want: ErrOverloadedIndex{index: 0}},
-				{in: input{priv: glome.PrivateKey([32]byte{}), index: 129}, want: ErrInvalidIndex{index: 129}},
-			} {
-				if err := manager.Add(k.in.priv, k.in.index); err != k.want {
-					t.Errorf("%v failed; got %#v, want %#v", name, err, k.want)
-				}
-			}
-		})
 	}
 }
 
 func TestKeyRead(t *testing.T) {
-	for name, manager := range tests() {
-		name := name
-		manager := manager
+	type input struct {
+		priv  glome.PrivateKey
+		index uint8
+	}
+	type output struct {
+		priv  glome.PrivateKey
+		found bool
+	}
 
-		type input struct {
-			priv  glome.PrivateKey
-			index uint8
+	for name, k := range []struct {
+		in   input
+		want output
+	}{
+		{
+			in:   input{priv: glome.PrivateKey([32]byte{}), index: 0},
+			want: output{priv: glome.PrivateKey([32]byte{}), found: true},
+		}, {
+			in: input{
+				priv: glome.PrivateKey([32]byte{49, 244, 125, 133, 0, 40, 7,
+					192, 7, 90, 5, 208, 234, 104, 66, 68, 251, 237, 187, 132,
+					67, 236, 108, 164, 162, 199, 41, 89, 128, 95, 26, 190}),
+				index: 111,
+			},
+			want: output{
+				priv: glome.PrivateKey([32]byte{49, 244, 125, 133, 0, 40, 7,
+					192, 7, 90, 5, 208, 234, 104, 66, 68, 251, 237, 187, 132,
+					67, 236, 108, 164, 162, 199, 41, 89, 128, 95, 26, 190}),
+				found: true,
+			},
+		},
+	} {
+		manager := NewKeyManager()
+		if _, found := manager.Read(k.in.index); found {
+			t.Errorf("test %v failed; found key on index %v", name, k.in.index)
 		}
-		type output struct {
-			priv  glome.PrivateKey
-			found bool
+		if err := manager.Add(k.in.priv, k.in.index); err != nil {
+			t.Fatalf("test %v, unexpected error: %v ", name, err.Error())
 		}
-
-		t.Run(name, func(t *testing.T) {
-			for _, k := range []struct {
-				in   input
-				want output
-			}{
-				{
-					in:   input{priv: glome.PrivateKey([32]byte{}), index: 0},
-					want: output{priv: glome.PrivateKey([32]byte{}), found: true},
-				}, {
-					in: input{
-						priv: glome.PrivateKey([32]byte{49, 244, 125, 133, 0, 40, 7,
-							192, 7, 90, 5, 208, 234, 104, 66, 68, 251, 237, 187, 132,
-							67, 236, 108, 164, 162, 199, 41, 89, 128, 95, 26, 190}),
-						index: 111,
-					},
-					want: output{
-						priv: glome.PrivateKey([32]byte{49, 244, 125, 133, 0, 40, 7,
-							192, 7, 90, 5, 208, 234, 104, 66, 68, 251, 237, 187, 132,
-							67, 236, 108, 164, 162, 199, 41, 89, 128, 95, 26, 190}),
-						found: true,
-					},
-				},
-			} {
-				if _, found := manager.Read(k.in.index); found {
-					t.Errorf("%v failed; found key on index %v", name, k.in.index)
-				}
-				if err := manager.Add(k.in.priv, k.in.index); err != nil {
-					t.Fatalf("test %v, unexpected error: %v ", name, err.Error())
-				}
-				if key, found := manager.Read(k.in.index); key != k.want.priv || found != k.want.found {
-					t.Errorf("%v failed; want %v, got %v,%v", name, k.want, key, found)
-				}
-			}
-		})
+		if key, found := manager.Read(k.in.index); key != k.want.priv || found != k.want.found {
+			t.Errorf("test %v failed on input %#v; want %v, got %v,%v", name, k.in, k.want, key, found)
+		}
 	}
 }
 
 func TestDropAllReplace(t *testing.T) {
-	for name, manager := range tests() {
-		name := name
-		manager := manager
+	preloadManager := NewKeyManager()
+	preloadManager.Add(glome.PrivateKey([32]byte{}), 0)
 
-		t.Run(name, func(t *testing.T) {
-			for _, k := range []struct {
-				in   []PrivateKey
-				want map[uint8]glome.PrivateKey
-			}{
-				{
-					in: []PrivateKey{
-						PrivateKey{Value: glome.PrivateKey([32]byte{}), Index: 0},
-						PrivateKey{
-							Value: glome.PrivateKey([32]byte{49, 244, 125, 133, 0, 40, 7,
-								192, 7, 90, 5, 208, 234, 104, 66, 68, 251, 237, 187, 132,
-								67, 236, 108, 164, 162, 199, 41, 89, 128, 95, 26, 190}),
-							Index: 1,
-						},
-					},
-					want: map[uint8]glome.PrivateKey{
-						0: glome.PrivateKey([32]byte{}),
-						1: glome.PrivateKey([32]byte{49, 244, 125, 133, 0, 40, 7,
-							192, 7, 90, 5, 208, 234, 104, 66, 68, 251, 237, 187, 132,
-							67, 236, 108, 164, 162, 199, 41, 89, 128, 95, 26, 190}),
-					},
-				},
-			} {
-				manager.DropAllReplace(k.in)
-				if !reflect.DeepEqual(manager.indexToPriv, k.want) {
-					t.Errorf("%v failed; got %#v, want %#v", name, manager.indexToPriv, k.want)
-				}
-			}
-		})
+	type input struct {
+		keys    []PrivateKey
+		manager *KeyManager
 	}
 
+	for name, k := range []struct {
+		in   input
+		want map[uint8]glome.PrivateKey
+	}{
+		{
+			in: input{
+				keys: []PrivateKey{
+					PrivateKey{Value: glome.PrivateKey([32]byte{}), Index: 0},
+					PrivateKey{
+						Value: glome.PrivateKey([32]byte{49, 244, 125, 133, 0, 40, 7,
+							192, 7, 90, 5, 208, 234, 104, 66, 68, 251, 237, 187, 132,
+							67, 236, 108, 164, 162, 199, 41, 89, 128, 95, 26, 190}),
+						Index: 1,
+					},
+				},
+				manager: NewKeyManager(),
+			},
+			want: map[uint8]glome.PrivateKey{
+				0: glome.PrivateKey([32]byte{}),
+				1: glome.PrivateKey([32]byte{49, 244, 125, 133, 0, 40, 7,
+					192, 7, 90, 5, 208, 234, 104, 66, 68, 251, 237, 187, 132,
+					67, 236, 108, 164, 162, 199, 41, 89, 128, 95, 26, 190}),
+			},
+		}, {
+			in: input{
+				keys: []PrivateKey{
+					PrivateKey{Value: glome.PrivateKey([32]byte{}), Index: 0},
+					PrivateKey{
+						Value: glome.PrivateKey([32]byte{49, 244, 125, 133, 0, 40, 7,
+							192, 7, 90, 5, 208, 234, 104, 66, 68, 251, 237, 187, 132,
+							67, 236, 108, 164, 162, 199, 41, 89, 128, 95, 26, 190}),
+						Index: 1,
+					},
+				},
+				manager: preloadManager,
+			},
+
+			want: map[uint8]glome.PrivateKey{
+				0: glome.PrivateKey([32]byte{}),
+				1: glome.PrivateKey([32]byte{49, 244, 125, 133, 0, 40, 7,
+					192, 7, 90, 5, 208, 234, 104, 66, 68, 251, 237, 187, 132,
+					67, 236, 108, 164, 162, 199, 41, 89, 128, 95, 26, 190}),
+			},
+		},
+	} {
+		k.in.manager.DropAllReplace(k.in.keys)
+		if !reflect.DeepEqual(k.in.manager.indexToPriv, k.want) {
+			t.Errorf("test %v failed; got %#v, want %#v", name, k.in.manager.indexToPriv, k.want)
+		}
+	}
 }

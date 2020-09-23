@@ -61,9 +61,8 @@ var (
 // an empty action is passed in the request.
 // - If no user can be obtained from request metadata, an empty string is to be
 // passed as default value.
-// - The host can contain information about both the host type and the host id parsed
-// as <host-type>:<host-id>. the host-type information is optional. if host-type is not
-// provided the string is parsed as <host-id> (that is, we also drop the colon).
+// - Both hostIDType and hostID can be empty. Whether this refer to a default value
+// or not is to be user configurable.
 type Authorizer interface {
 	GrantLogin(user string, hostID string, hostIDType string, action string) bool
 }
