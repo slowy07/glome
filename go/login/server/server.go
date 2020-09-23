@@ -94,7 +94,16 @@ type LoginServer struct {
 
 // ServeHTTP implements http.Handler interface.
 func (s *LoginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.router.ServeHTTP(w, r)
+	// get the url somehow
+	response, err := ParseURLResponse(url)
+	if err != nil {
+		log.Printf(err.Error())
+		fmt.Fprintln(w, err.Error())
+		return
+	}
+
+	user := r.Header.Get(s.userHeader)
+
 }
 
 // Authorizer sets Authorizer function for LoginServer in a concurrentsafe way.
@@ -142,66 +151,7 @@ func UserHeader(s string) func(srv *LoginServer) error {
 	}
 }
 
-//----- code onwards will be deprecated as soon as integration with go-glome-login is done -----
-func (s *LoginServer) newRouter() *mux.Router { // Review Error Message
-	r := mux.NewRouter().UseEncodedPath()
-
-	handler := func(w http.ResponseWriter, r *http.Request) {
-		params := mux.Vars(r)
-
-		user := r.Header.Get(s.userHeader)
-
-		if err := handleVersion(params["V"]); err != nil {
-			log.Printf(err.Error())
-			fmt.Fprintln(w, err.Error())
-			return
-		}
-
-		dialog, tag, err := s.handleHandshakeV1(params["handshake"])
-		if err != nil {
-			log.Printf(err.Error())
-			fmt.Fprintln(w, err.Error())
-			return
-		}
-
-		hostID, err := readHost(params["hostID"])
-		if err != nil {
-			log.Printf(err.Error())
-			fmt.Fprintln(w, err.Error())
-			return
-		}
-
-		action, err := readAction(params)
-		if err != nil {
-			log.Printf(err.Error())
-			fmt.Fprintln(w, err.Error())
-			return
-		}
-
-		msg, err := readMessage(hostID, action)
-		if err != nil {
-			log.Printf(err.Error())
-			fmt.Fprintln(w, err.Error())
-			return
-		}
-
-		if err = verifyReceivedTag(dialog, tag, msg); err != nil {
-			log.Printf(err.Error())
-			fmt.Fprintln(w, err.Error())
-			return
-		}
-
-		hostIDType := ""
-		s.printToken(w, dialog, hostID, hostIDType, action, msg, user)
-	}
-
-	r.Path("/v{V:[0-9]+}/{handshake}/{hostID}/").HandlerFunc(handler)
-	r.Path("/v{V:[0-9]+}/{handshake}/{hostID}/{action:[a-zA-Z0-9+/=%]+}/").
-		HandlerFunc(handler)
-
-	return r
-}
-
+// Verify if provided version is accepted by the server
 func handleVersion(V string) error {
 	switch i, err := strconv.Atoi(V); {
 	case err != nil:
@@ -210,97 +160,4 @@ func handleVersion(V string) error {
 		return ErrVersionNotSupported
 	}
 	return nil
-}
-
-func (s *LoginServer) handleHandshakeV1(h string) (*glome.Dialog, []byte, error) {
-	data, err := base64.URLEncoding.DecodeString(h)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if len(data) < 32 { //handshake must have 66 bytes (2 prefixtype+prefix7, 32 eph, 32 prefixN)
-		return nil, nil, ErrFailedHandshake
-	}
-
-	prefixtype := data[0] >> 7 // Read first bit
-	if prefixtype != 0 {
-		return nil, nil, ErrInvalidPrefixType
-	}
-
-	prefix7 := (data[0] & 127) // Read first byte but fist bit
-	server, found := s.Keys.Read(prefix7)
-	if !found {
-		return nil, nil, ErrInvalidPrefix7
-	}
-
-	client, err := glome.PublicKeyFromSlice(data[1:33])
-	if err != nil {
-		return nil, nil, err
-	}
-
-	dialog, err := server.TruncatedExchange(client, 1)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return dialog, data[33:], nil // PrefixN currently stores the message tag.
-}
-
-func readHost(hostID string) (string, error) {
-	return url.QueryUnescape(hostID)
-}
-
-func readAction(params map[string]string) (string, error) {
-	action, ok := params["action"]
-	if !ok {
-		return "", nil
-	}
-
-	return url.QueryUnescape(action)
-}
-
-func readMessage(hostID string, action string) ([]byte, error) {
-	msgAux, err := url.QueryUnescape(hostID + "/" + action)
-	if err != nil {
-		return nil, err
-	}
-
-	msg := []byte(msgAux) // If we do []byte(hostID + "/" + action) percent notation remain unescaped.
-
-	return msg, nil
-}
-
-func verifyReceivedTag(d *glome.Dialog, tag []byte, msg []byte) error {
-	if len(tag) > 0 { // It might be possible that the user decide not to send his tag
-		if !d.Check(tag, msg, 0) {
-			return ErrIncorrectTag
-		}
-	}
-	return nil
-}
-
-//This function is to be redone after the glome-login-lib is integrated
-func (s *LoginServer) printToken(w http.ResponseWriter, d *glome.Dialog, hostID string, hostIDType string,
-	action string, msg []byte, user string) {
-	s.authLock.RLock()
-	allowed, err := s.auth.GrantLogin(user, hostID, hostIDType, action)
-	s.authLock.RUnlock()
-
-	if !allowed {
-		if err != nil {
-			fmt.Fprintf(w, "User '%v' is not authorized to run action '%v' in host '%v:%v' because %v \n",
-				user, action, hostIDType, hostID, err)
-			log.Printf("User '%v' is not authorized to run action '%v' in host '%v:%v' because %v \n",
-				user, action, hostIDType, hostID, err)
-		}
-		fmt.Fprintf(w, "403 Forbidden: User '%v' is not authorized to run action '%v' in host '%v'. \n",
-			user, action, hostID)
-		log.Printf("403 Forbidden: User '%v' is denied to run action '%v' in host '%v'. \n",
-			user, action, hostID)
-		return
-	}
-
-	responseToken := base64.URLEncoding.EncodeToString(d.Tag(msg, 0))[:s.responseLen]
-	fmt.Fprintln(w, responseToken)
-	log.Printf("User '%v' is allowed to run action '%v' in host '%v'. \n", user, action, hostID)
 }
