@@ -37,7 +37,7 @@ var (
 	// ErrInvalidResponseLen  denotes that a ephemeral is invalid.
 	ErrInvalidResponseLen = fmt.Errorf("invalid response length provided")
 
-	// ------ This error are to be provided by the glome login lib
+	// This error are hypothesis on what will be provided by the glome login lib
 
 	// ErrFailedHandshake denotes that GLOME handshake has failed.
 	ErrFailedHandshake = fmt.Errorf("400 bad request: failed handshake")
@@ -93,15 +93,9 @@ type LoginServer struct {
 	userHeader  string
 }
 
-// Implements http.Handler interface.
+// ServeHTTP implements http.Handler interface.
 func (s *LoginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.router.ServeHTTP(w, r)
-}
-
-// Run method listen-and-server glome-login service at provided address.
-func (s *LoginServer) Run(addr string) {
-	server := &http.Server{Addr: addr, Handler: s}
-	log.Fatal(server.ListenAndServe())
 }
 
 // Authorizer sets Authorizer function for LoginServer in a concurrentsafe way.
