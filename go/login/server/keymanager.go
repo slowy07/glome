@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package backend implements GLOME-login server.
+// Package backend implements GLOME-login server framework.
 package server
 
 import (
@@ -22,24 +22,22 @@ import (
 	"github.com/google/glome/go/glome"
 )
 
-var ()
-
 // ErrInvalidIndex denotes that an invalid index was provided
 type ErrInvalidIndex struct {
-	index uint8
+	Index uint8
 }
 
 func (e ErrInvalidIndex) Error() string {
-	return fmt.Sprintf("index should be in range 0-127, found: %v", e.index)
+	return fmt.Sprintf("index should be in range 0-127, found: %v", e.Index)
 }
 
 // ErrOverloadedIndex denotes that an invalid index is already in use
 type ErrOverloadedIndex struct {
-	index uint8
+	Index uint8
 }
 
 func (e ErrOverloadedIndex) Error() string {
-	return fmt.Sprintf("index already in use, found: %v", e.index)
+	return fmt.Sprintf("index already in use, found: %v", e.Index)
 }
 
 // ErrIndexNotFound denotes that an index was not found
