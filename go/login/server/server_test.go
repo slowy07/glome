@@ -76,8 +76,8 @@ func serverTests() map[string]testVector {
 	}
 }
 
-func auth(user string, hostID string, hostIDType string, action string) bool {
-	return true
+func auth(user string, hostID string, hostIDType string, action string) (bool, error) {
+	return true, nil
 }
 
 func TestServer(t *testing.T) {

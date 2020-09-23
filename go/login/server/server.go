@@ -30,11 +30,11 @@ import (
 
 const (
 	// MaxResponseSize is the maximum size in characaters of the response token
-	MaxResponseSize = 44
+	MaxResponseSize = 44 // 32bytes base64 encoded
 )
 
 var (
-	// ErrInvalidResponseLen  denotes that a ephemeral is invalid.
+	// ErrInvalidResponseLen denotes that response length provided is invalid
 	ErrInvalidResponseLen = fmt.Errorf("invalid response length provided")
 
 	// This error are hypothesis on what will be provided by the glome login lib
@@ -64,14 +64,14 @@ var (
 // - Both hostIDType and hostID can be empty. Whether this refer to a default value
 // or not is to be user configurable.
 type Authorizer interface {
-	GrantLogin(user string, hostID string, hostIDType string, action string) bool
+	GrantLogin(user string, hostID string, hostIDType string, action string) (bool, error)
 }
 
 // AuthorizerFunc type is an adapter to allow the use of ordinary functions as Authorizers.
-type AuthorizerFunc func(user string, hostID string, hostIDType string, action string) bool
+type AuthorizerFunc func(user string, hostID string, hostIDType string, action string) (bool, error)
 
 // GrantLogin calls a(user, action, host)
-func (a AuthorizerFunc) GrantLogin(user string, hostID string, hostIDType string, action string) bool {
+func (a AuthorizerFunc) GrantLogin(user string, hostID string, hostIDType string, action string) (bool, error) {
 	return a(user, hostID, hostIDType, action)
 }
 
@@ -126,7 +126,7 @@ func NewLoginServer(a Authorizer, options ...func(*LoginServer) error) (*LoginSe
 // n characters long response.
 func ResponseLen(n uint8) func(srv *LoginServer) error {
 	return func(srv *LoginServer) error {
-		if 1 > n || MaxResponseSize < n {
+		if !(0 < n && n <= MaxResponseSize) {
 			return ErrInvalidResponseLen
 		}
 		srv.responseLen = n
@@ -283,12 +283,20 @@ func verifyReceivedTag(d *glome.Dialog, tag []byte, msg []byte) error {
 func (s *LoginServer) printToken(w http.ResponseWriter, d *glome.Dialog, hostID string, hostIDType string,
 	action string, msg []byte, user string) {
 	s.authLock.RLock()
-	allowed := s.auth.GrantLogin(user, hostID, hostIDType, action)
+	allowed, err := s.auth.GrantLogin(user, hostID, hostIDType, action)
 	s.authLock.RUnlock()
 
 	if !allowed {
-		fmt.Fprintf(w, "403 Forbidden: User '%v' is not authorized to run action '%v' in host '%v'. \n", user, action, hostID)
-		log.Printf("403 Forbidden: User '%v' is denied to run action '%v' in host '%v'. \n", user, action, hostID)
+		if err != nil {
+			fmt.Fprintf(w, "User '%v' is not authorized to run action '%v' in host '%v:%v' because %v \n",
+				user, action, hostIDType, hostID, err)
+			log.Printf("User '%v' is not authorized to run action '%v' in host '%v:%v' because %v \n",
+				user, action, hostIDType, hostID, err)
+		}
+		fmt.Fprintf(w, "403 Forbidden: User '%v' is not authorized to run action '%v' in host '%v'. \n",
+			user, action, hostID)
+		log.Printf("403 Forbidden: User '%v' is denied to run action '%v' in host '%v'. \n",
+			user, action, hostID)
 		return
 	}
 
