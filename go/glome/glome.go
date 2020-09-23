@@ -230,19 +230,19 @@ func (d *Dialog) Tag(msg []byte, counter uint8) []byte {
 // to the correct tag. Also, its length must be at least MinPeerTagLength
 // and always smaller than MaxTagSize.
 func (d *Dialog) Check(tag []byte, msg []byte, counter uint8) bool {
-	expect := d.expect(tag, msg, counter)
+	expect := d.expected(tag, msg, counter)
 	return hmac.Equal(expect, tag)
 }
 
 // CheckEncoded method checks if an encoded tag matches some provided message and the counter.
 // The used encoding is base64-url. For more details look at the Check method description.
-func (d *Dialog) CheckEncoded(tag string, msg []byte, counter uint8) bool {
-	expect := d.expect([]byte(tag), msg, counter)
-	return base64.URLEncoding.EncodeToString(expect) == tag
+func (d *Dialog) CheckEncoded(tag string, msg []byte, counter uint8, encFunc func(src []byte) string) bool {
+	expect := d.expected([]byte(tag), msg, counter)
+	return encFunc(expect) == tag
 }
 
 // Returns the expected tag according to the provided message and the counter.
-func (d *Dialog) expect(tag []byte, msg []byte, counter uint8) []byte {
+func (d *Dialog) expected(tag []byte, msg []byte, counter uint8) []byte {
 	var prefixSize uint
 	switch {
 	case uint(len(tag)) < d.minPeerTagSize:
