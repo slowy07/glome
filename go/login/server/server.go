@@ -24,8 +24,8 @@ import (
 	"strconv"
 	"sync"
 
+	"../../login" // Modify when it is pushed
 	"github.com/google/glome/go/glome"
-	"github.com/gorilla/mux"
 )
 
 const (
@@ -86,24 +86,9 @@ type LoginServer struct {
 	// Unexported fields.
 	auth     Authorizer
 	authLock sync.RWMutex
-	router   *mux.Router
 
 	responseLen uint8
 	userHeader  string
-}
-
-// ServeHTTP implements http.Handler interface.
-func (s *LoginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// get the url somehow
-	response, err := ParseURLResponse(url)
-	if err != nil {
-		log.Printf(err.Error())
-		fmt.Fprintln(w, err.Error())
-		return
-	}
-
-	user := r.Header.Get(s.userHeader)
-
 }
 
 // Authorizer sets Authorizer function for LoginServer in a concurrentsafe way.
@@ -151,13 +136,59 @@ func UserHeader(s string) func(srv *LoginServer) error {
 	}
 }
 
+// maybe a better name should be used
+func (s *LoginServer) newGlomeLoginLibServer() {
+	return login.Server{KeyFetcher: k.keyFetcher()}
+}
+
+func printResponse(w http.ResponseWriter, s string) {
+	fmt.Fprintf(w, s)
+	log.Printf(s)
+}
+
+// ServeHTTP implements http.Handler interface.
+func (s *LoginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	user := r.Header.Get(s.userHeader)
+	loginParser := newGlomeLoginLibServer
+
+	// get url somehow
+	response, err := loginParser.ParseURLResponse(url)
+	if err != nil {
+		printResponse(w, err.Error())
+		return
+	}
+
+	if err := handleVersion(response.V); err != nil {
+		printResponse(w, err.Error())
+		return
+	}
+
+	s.printToken(w, response)
+}
+
 // Verify if provided version is accepted by the server
-func handleVersion(V string) error {
-	switch i, err := strconv.Atoi(V); {
-	case err != nil:
-		return err
-	case i != 1:
+func handleVersion(V byte) error {
+	if i != 1 {
 		return ErrVersionNotSupported
 	}
 	return nil
+}
+
+func (s *LoginServer) printToken(w http.ResponseWriter, r *URLResponse) {
+	s.authLock.RLock()
+	allowed, err := s.auth.GrantLogin(user, hostID, hostIDType, action)
+	s.authLock.RUnlock()
+
+	if !allowed {
+		if err != nil {
+			printResponse(w, err.Error())
+		}
+		printResponse(w, "Unauthorized action")
+
+		return
+	}
+
+	responseToken := r.GetEncToken()
+	fmt.Fprintln(w, responseToken)
+	log.Printf("User '%v' is allowed to run action '%v' in host '%v'. \n", user, action, hostID)
 }

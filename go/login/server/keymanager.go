@@ -131,6 +131,14 @@ func (k *KeyManager) ServiceKeys() []PublicKey {
 	return serviceKey
 }
 
+// Implement function for communication with login library.
+func (k *KeyManager) keyFetcher() func(uint8) glome.PrivateKey {
+	return func(uint8) glome.PrivateKey {
+		key, _ := k.Read()
+		return key
+	}
+}
+
 // NewKeyManager returns a new key manager.
 func NewKeyManager() *KeyManager {
 	return &KeyManager{
