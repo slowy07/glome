@@ -51,7 +51,7 @@ func tests() map[string]*KeyManager {
 	return k
 }
 
-func Find(list []PublicKey, pub PublicKey) bool {
+func Contains(list []PublicKey, pub PublicKey) bool {
 	for _, b := range list {
 		if b == pub {
 			return true
@@ -99,7 +99,7 @@ func TestKeyAdd(t *testing.T) {
 					t.Fatalf("test %v, unexpected error: %v ", name, err.Error())
 				}
 
-				if !Find(manager.publicKeys, PublicKey{Value: *pub, Index: k.index}) {
+				if !Contains(manager.publicKeys, PublicKey{Value: *pub, Index: k.index}) {
 					t.Errorf("test %v: public key %v was not added in index %v",
 						name, pub, k.index)
 				}

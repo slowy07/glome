@@ -64,10 +64,8 @@ type PublicKey struct {
 }
 
 // KeyManager performs key storing in a concurrent-safe way. It allows for constant
-// time search of keys both by index and by public key prefix, as requested in glome-login
-// specification. TODO: It implements interface ... from glome-login ...
+// time search of keys by index.
 type KeyManager struct {
-	// Fields are unexported or filtered fields
 	indexToPriv map[uint8]glome.PrivateKey
 	publicKeys  []PublicKey
 	lock        sync.RWMutex
