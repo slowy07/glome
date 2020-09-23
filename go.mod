@@ -3,6 +3,7 @@ module github.com/google/glome
 go 1.14
 
 require (
+	github.com/gorilla/mux v1.8.0
 	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a
 	golang.org/x/sys v0.0.0-20200831180312-196b9ba8737a // indirect
 	golang.org/x/text v0.3.3 // indirect
