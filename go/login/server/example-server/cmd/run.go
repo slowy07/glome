@@ -17,12 +17,13 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"../../../../glome"
 	"../../../server"
-	"github.com/google/glome/go/glome"
 
 	"github.com/spf13/cobra"
 )
@@ -61,7 +62,7 @@ For more information read --help option.`)
 	signal.Notify(sig, syscall.SIGHUP)
 	go handleSignals(sig, srv)
 
-	srv.Run(addr)
+	log.Fatalln(http.ListenAndServe(addr, srv))
 }
 
 func init() {

@@ -19,10 +19,10 @@ import (
 	"io/ioutil"
 	"log"
 
+	"../../../../glome"
 	"../../../server"
 
 	lua "github.com/Shopify/go-lua"
-	"github.com/google/glome/go/glome"
 	"gopkg.in/yaml.v2"
 )
 
@@ -70,7 +70,7 @@ func updateKeys(unformatedKeys map[string]yamlkey, b *server.LoginServer) {
 }
 
 func openLua(filename string) server.AuthorizerFunc {
-	return server.AuthorizerFunc(func(user string, hostID string, hostIDType string, action string) bool {
+	return server.AuthorizerFunc(func(user string, hostID string, hostIDType string, action string) (bool, error) {
 		L := lua.NewState()
 
 		lua.OpenLibraries(L)
@@ -94,6 +94,6 @@ func openLua(filename string) server.AuthorizerFunc {
 		}
 
 		result := L.ToBoolean(-1)
-		return result
+		return result, nil
 	})
 }
