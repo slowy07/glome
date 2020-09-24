@@ -32,21 +32,6 @@ const (
 var (
 	// ErrInvalidResponseLen denotes that response length provided is invalid
 	ErrInvalidResponseLen = fmt.Errorf("invalid response length provided")
-
-	// This error are hypothesis on what will be provided by the glome login lib
-
-	// ErrFailedHandshake denotes that GLOME handshake has failed.
-	ErrFailedHandshake = fmt.Errorf("400 bad request: failed handshake")
-	// ErrVersionNotSupported denotes that a version of GLOME handshake is not supported.
-	ErrVersionNotSupported = fmt.Errorf("400 bad request: version not supported")
-	// ErrInvalidPrefixType denotes that a prefix type is invalid.
-	ErrInvalidPrefixType = fmt.Errorf("400 bad request: invalid prefix type")
-	// ErrInvalidPrefix7 denotes that a prefix7 is invalid.
-	ErrInvalidPrefix7 = fmt.Errorf("404 Not Found: prefix7 not found")
-	// ErrInvalidEph denotes that a ephemeral is invalid.
-	ErrInvalidEph = fmt.Errorf("400 bad request: invalid ephemeral Key")
-	// ErrIncorrectTag denotes that received tag is incorrect
-	ErrIncorrectTag = fmt.Errorf("invalid Tag")
 )
 
 // Authorizer responds to an authorization request. The method
