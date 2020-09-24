@@ -17,7 +17,6 @@ package server
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"sync"
 
@@ -121,11 +120,6 @@ func (s *LoginServer) newGlomeLoginLibServer() *login.Server {
 	return &login.Server{KeyFetcher: s.Keys.keyFetcher()}
 }
 
-func printResponse(w http.ResponseWriter, s string) {
-	fmt.Fprintf(w, s)
-	log.Printf(s)
-}
-
 // ServeHTTP implements http.Handler interface.
 func (s *LoginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	user := r.Header.Get(s.userHeader)
@@ -136,10 +130,9 @@ func (s *LoginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		path = r.URL.Path
 	}
 
-	log.Printf("INPUT REQUEST: %#v", path)
 	response, err := loginParser.ParseURLResponse(path)
 	if err != nil {
-		printResponse(w, err.Error())
+		http.Error(w, err.Error(), 400)
 		return
 	}
 
@@ -154,17 +147,15 @@ func (s *LoginServer) printToken(w http.ResponseWriter, r *login.URLResponse, us
 
 	if !allowed {
 		if err != nil {
-			printResponse(w, err.Error())
+			http.Error(w, err.Error(), 403)
 		}
-		printResponse(w, "Unauthorized action")
+		http.Error(w, "Unauthorized action", 403)
 
 		return
 	}
 
 	responseToken := r.GetEncToken()[:s.responseLen]
 	fmt.Fprintln(w, responseToken)
-	log.Printf("User '%v' is allowed to run action '%v' in host '%v:%v'. \n",
-		user, r.Msg.Action, r.Msg.HostIDType, r.Msg.HostID)
 }
 
 func (s *LoginServer) printToken(w http.ResponseWriter, r *URLResponse) {
