@@ -18,7 +18,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/google/glome/go/glome"
+	"../../glome"
 )
 
 func Contains(list []PublicKey, pub PublicKey) bool {

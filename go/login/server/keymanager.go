@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/google/glome/go/glome"
+	"../../glome"
 )
 
 // ErrInvalidKeyIndex denotes that an invalid index was provided
@@ -133,8 +133,8 @@ func (k *KeyManager) ServiceKeys() []PublicKey {
 
 // Implement function for communication with login library.
 func (k *KeyManager) keyFetcher() func(uint8) glome.PrivateKey {
-	return func(uint8) glome.PrivateKey {
-		key, _ := k.Read()
+	return func(i uint8) glome.PrivateKey {
+		key, _ := k.Read(i)
 		return key
 	}
 }

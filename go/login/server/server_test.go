@@ -21,7 +21,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/google/glome/go/glome"
+	"../../glome"
 )
 
 type testVector struct {
@@ -86,12 +86,6 @@ func TestServer(t *testing.T) {
 		tv := tv
 
 		t.Run(name, func(t *testing.T) {
-			// for _, k := range []struct {
-			// 	in   bool
-			// 	want bool
-			// }{
-			// 	{in: true, o: b},
-			// } {
 			r := httptest.NewRequest("GET", tv.Request, nil)
 			w := httptest.NewRecorder()
 
@@ -112,7 +106,6 @@ func TestServer(t *testing.T) {
 			if string(body) != tv.Response {
 				t.Errorf("test $v, got %#v, want %#v", string(body), tv.Response)
 			}
-			// Everything working - now its time to use whatever w has stored
 		})
 	}
 }

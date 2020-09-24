@@ -22,7 +22,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/google/glome/go/glome"
+	"../glome"
 )
 
 const (

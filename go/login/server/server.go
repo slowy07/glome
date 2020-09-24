@@ -16,16 +16,12 @@
 package server
 
 import (
-	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
-	"net/url"
-	"strconv"
 	"sync"
 
 	"../../login" // Modify when it is pushed
-	"github.com/google/glome/go/glome"
 )
 
 const (
@@ -105,7 +101,6 @@ func NewLoginServer(a Authorizer, options ...func(*LoginServer) error) (*LoginSe
 		Keys:        NewKeyManager(),
 		responseLen: MaxResponseSize,
 	}
-	srv.router = srv.newRouter()
 
 	for _, option := range options {
 		if err := option(&srv); err != nil {
@@ -137,8 +132,8 @@ func UserHeader(s string) func(srv *LoginServer) error {
 }
 
 // maybe a better name should be used
-func (s *LoginServer) newGlomeLoginLibServer() {
-	return login.Server{KeyFetcher: k.keyFetcher()}
+func (s *LoginServer) newGlomeLoginLibServer() *login.Server {
+	return &login.Server{KeyFetcher: s.Keys.keyFetcher()}
 }
 
 func printResponse(w http.ResponseWriter, s string) {
@@ -149,34 +144,22 @@ func printResponse(w http.ResponseWriter, s string) {
 // ServeHTTP implements http.Handler interface.
 func (s *LoginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	user := r.Header.Get(s.userHeader)
-	loginParser := newGlomeLoginLibServer
+	loginParser := s.newGlomeLoginLibServer()
 
-	// get url somehow
-	response, err := loginParser.ParseURLResponse(url)
+	log.Printf("\n\nThe URL path: %#v\n\n", r.URL.Path)
+	response, err := loginParser.ParseURLResponse(r.URL.Path)
 	if err != nil {
 		printResponse(w, err.Error())
 		return
 	}
 
-	if err := handleVersion(response.V); err != nil {
-		printResponse(w, err.Error())
-		return
-	}
-
-	s.printToken(w, response)
+	s.printToken(w, response, user)
 }
 
-// Verify if provided version is accepted by the server
-func handleVersion(V byte) error {
-	if i != 1 {
-		return ErrVersionNotSupported
-	}
-	return nil
-}
-
-func (s *LoginServer) printToken(w http.ResponseWriter, r *URLResponse) {
+func (s *LoginServer) printToken(w http.ResponseWriter, r *login.URLResponse, user string) {
 	s.authLock.RLock()
-	allowed, err := s.auth.GrantLogin(user, hostID, hostIDType, action)
+	allowed, err := s.auth.GrantLogin(user, r.Msg.HostId, r.Msg.HostIdType,
+		r.Msg.Action)
 	s.authLock.RUnlock()
 
 	if !allowed {
@@ -188,7 +171,8 @@ func (s *LoginServer) printToken(w http.ResponseWriter, r *URLResponse) {
 		return
 	}
 
-	responseToken := r.GetEncToken()
+	responseToken := r.GetEncToken()[:s.responseLen]
 	fmt.Fprintln(w, responseToken)
-	log.Printf("User '%v' is allowed to run action '%v' in host '%v'. \n", user, action, hostID)
+	log.Printf("User '%v' is allowed to run action '%v' in host '%v:%v'. \n",
+		user, r.Msg.HostId, r.Msg.HostIdType, r.Msg.Action)
 }
