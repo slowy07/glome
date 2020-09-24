@@ -71,6 +71,7 @@ func (m *Message) Construct() []byte {
 	if m.Action != "" {
 		msg += fmt.Sprintf("/%s", m.Action)
 	}
+
 	return []byte(msg)
 }
 

@@ -104,7 +104,7 @@ func TestServer(t *testing.T) {
 				t.Fatalf("test %v, unexpected error: %v ", name, err.Error())
 			}
 			if string(body) != tv.Response {
-				t.Errorf("test $v, got %#v, want %#v", string(body), tv.Response)
+				t.Errorf("test %v, got %#v, want %#v", name, string(body), tv.Response)
 			}
 		})
 	}

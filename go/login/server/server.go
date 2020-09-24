@@ -131,8 +131,13 @@ func (s *LoginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	user := r.Header.Get(s.userHeader)
 	loginParser := s.newGlomeLoginLibServer()
 
-	log.Printf("\n\nThe URL path: %#v\n\n", r.URL.RawPath)
-	response, err := loginParser.ParseURLResponse(r.URL.RawPath)
+	path := r.URL.RawPath
+	if path == "" {
+		path = r.URL.Path
+	}
+
+	log.Printf("INPUT REQUEST: %#v", path)
+	response, err := loginParser.ParseURLResponse(path)
 	if err != nil {
 		printResponse(w, err.Error())
 		return
@@ -159,5 +164,5 @@ func (s *LoginServer) printToken(w http.ResponseWriter, r *login.URLResponse, us
 	responseToken := r.GetEncToken()[:s.responseLen]
 	fmt.Fprintln(w, responseToken)
 	log.Printf("User '%v' is allowed to run action '%v' in host '%v:%v'. \n",
-		user, r.Msg.HostID, r.Msg.HostIDType, r.Msg.Action)
+		user, r.Msg.Action, r.Msg.HostIDType, r.Msg.HostID)
 }
