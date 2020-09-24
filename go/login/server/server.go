@@ -146,8 +146,8 @@ func (s *LoginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	user := r.Header.Get(s.userHeader)
 	loginParser := s.newGlomeLoginLibServer()
 
-	log.Printf("\n\nThe URL path: %#v\n\n", r.URL.Path)
-	response, err := loginParser.ParseURLResponse(r.URL.Path)
+	log.Printf("\n\nThe URL path: %#v\n\n", r.URL.RawPath)
+	response, err := loginParser.ParseURLResponse(r.URL.RawPath)
 	if err != nil {
 		printResponse(w, err.Error())
 		return
@@ -158,7 +158,7 @@ func (s *LoginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *LoginServer) printToken(w http.ResponseWriter, r *login.URLResponse, user string) {
 	s.authLock.RLock()
-	allowed, err := s.auth.GrantLogin(user, r.Msg.HostId, r.Msg.HostIdType,
+	allowed, err := s.auth.GrantLogin(user, r.Msg.HostID, r.Msg.HostIDType,
 		r.Msg.Action)
 	s.authLock.RUnlock()
 
@@ -174,5 +174,5 @@ func (s *LoginServer) printToken(w http.ResponseWriter, r *login.URLResponse, us
 	responseToken := r.GetEncToken()[:s.responseLen]
 	fmt.Fprintln(w, responseToken)
 	log.Printf("User '%v' is allowed to run action '%v' in host '%v:%v'. \n",
-		user, r.Msg.HostId, r.Msg.HostIdType, r.Msg.Action)
+		user, r.Msg.HostID, r.Msg.HostIDType, r.Msg.Action)
 }
