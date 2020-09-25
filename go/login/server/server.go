@@ -125,7 +125,6 @@ func (s *LoginServer) newLoginParser() *login.Server {
 
 // ServeHTTP implements http.Handler interface.
 func (s *LoginServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, r.URL.Path)
 	if r.URL.Path == "/" {
 		s.printServerKeys(w)
 		return
@@ -167,6 +166,8 @@ func (s *LoginServer) printToken(w http.ResponseWriter, r *login.URLResponse, us
 }
 
 func (s *LoginServer) printServerKeys(w http.ResponseWriter) {
+	fmt.Fprintf(w, "List of server keys\n")
+	fmt.Fprintf(w, "-------------------\n")
 	fmt.Fprintf(w, "Index\tValue\n")
 	for _, key := range s.Keys.ServiceKeys() {
 		fmt.Fprintf(w, "%v\t%v\n", key.Index, hex.EncodeToString(key.Value[:]))
