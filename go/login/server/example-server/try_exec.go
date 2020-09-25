@@ -5,29 +5,32 @@
 package main
 
 import (
-	"os"
+	"bytes"
+	"fmt"
+	"log"
 	"os/exec"
-
-	"../../server"
+	"strings"
 )
 
 func executeBinary(path string) func() string {
-	path, err := exec.LookPath(path)
+	p, err := exec.LookPath(path)
 	if err != nil {
 		log.Fatalf("Could not find binary in %#v", path)
 	}
 
-	cmd.exec(path)
+	cmd := exec.Command(p)
 	cmd.Stdin = strings.NewReader("some input")
 	var out bytes.Buffer
 	cmd.Stdout = &out
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Printf("in all caps: %q\n", out.String())
+
+	return func() string { return "" }
 }
 
 func main() {
-
+	executeBinary("./config/helloworld")
 }
