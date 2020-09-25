@@ -41,11 +41,11 @@ func (e ErrOverloadedKeyIndex) Error() string {
 
 // ErrKeyIndexNotFound denotes that an index was not found
 type ErrKeyIndexNotFound struct {
-	index uint8
+	Index uint8
 }
 
 func (e ErrKeyIndexNotFound) Error() string {
-	return fmt.Sprintf("key index %v not found", e.index)
+	return fmt.Sprintf("key index %v not found", e.Index)
 }
 
 // A PrivateKey represent a Private key for a login server. It is a pair composed of a private key
@@ -132,10 +132,18 @@ func (k *KeyManager) ServiceKeys() []PublicKey {
 }
 
 // Implement function for communication with login library.
-func (k *KeyManager) keyFetcher() func(uint8) glome.PrivateKey {
-	return func(i uint8) glome.PrivateKey {
-		key, _ := k.Read(i)
-		return key
+func (k *KeyManager) keyFetcher() func(uint8) (glome.PrivateKey, error) {
+	return func(index uint8) (glome.PrivateKey, error) {
+		if !(0 <= index && index <= 127) {
+			return glome.PrivateKey{}, ErrInvalidKeyIndex{Index: index}
+		}
+
+		key, found := k.Read(index)
+		if !found {
+			return glome.PrivateKey{}, ErrKeyIndexNotFound{Index: index}
+		}
+
+		return key, nil
 	}
 }
 
