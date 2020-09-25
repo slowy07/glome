@@ -104,10 +104,19 @@ jobs:
         go get -u golang.org/x/lint/golint
         go get -u golang.org/x/crypto/curve25519
     - name: run gofmt test
-      run: gofmt -d go/glome/*.go
+      run: |
+        gofmt -d go/glome/*.go
+	gofmt -d go/login/server/*.go
     - name: run golint test
-      run: golint go/glome/*.go
-    - name: run unit tests
+      run: |
+        golint go/glome/*.go
+	golint go/login/server/*.go
+    - name: run glome unit tests
       run: |
         cd go/glome
         go test
+    - name: run login-server unit tests
+      run: |
+        cd go/login/server
+        go test
+	

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package backend implements GLOME-login server framework.
+// Package server implements GLOME-login server framework.
 package server
 
 import (
@@ -78,7 +78,7 @@ func (s *LoginServer) Authorizer(a Authorizer) {
 	s.authLock.Unlock()
 }
 
-// NewServer creates a new server with provided Authorizer and, optionally, selected options
+// NewLoginServer creates a new server with provided Authorizer and, optionally, selected options
 func NewLoginServer(a Authorizer, options ...func(*LoginServer) error) (*LoginServer, error) {
 	srv := LoginServer{
 		auth:        a,

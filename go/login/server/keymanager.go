@@ -30,7 +30,7 @@ func (e ErrInvalidKeyIndex) Error() string {
 	return fmt.Sprintf("key index should be in range 0-127, found: %v", e.Index)
 }
 
-// ErrOverloadedIndex denotes that an invalid index is already in use
+// ErrOverloadedKeyIndex denotes that an invalid index is already in use
 type ErrOverloadedKeyIndex struct {
 	Index uint8
 }
@@ -39,7 +39,7 @@ func (e ErrOverloadedKeyIndex) Error() string {
 	return fmt.Sprintf("key index already in use, found: %v", e.Index)
 }
 
-// ErrIndexNotFound denotes that an index was not found
+// ErrKeyIndexNotFound denotes that an index was not found
 type ErrKeyIndexNotFound struct {
 	index uint8
 }
