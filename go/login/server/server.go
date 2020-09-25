@@ -157,22 +157,3 @@ func (s *LoginServer) printToken(w http.ResponseWriter, r *login.URLResponse, us
 	responseToken := r.GetEncToken()[:s.responseLen]
 	fmt.Fprintln(w, responseToken)
 }
-
-func (s *LoginServer) printToken(w http.ResponseWriter, r *URLResponse) {
-	s.authLock.RLock()
-	allowed, err := s.auth.GrantLogin(user, hostID, hostIDType, action)
-	s.authLock.RUnlock()
-
-	if !allowed {
-		if err != nil {
-			printResponse(w, err.Error())
-		}
-		printResponse(w, "Unauthorized action")
-
-		return
-	}
-
-	responseToken := r.GetEncToken()
-	fmt.Fprintln(w, responseToken)
-	log.Printf("User '%v' is allowed to run action '%v' in host '%v'. \n", user, action, hostID)
-}
