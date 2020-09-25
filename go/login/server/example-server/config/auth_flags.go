@@ -71,6 +71,8 @@ func Init() {
 
 func main() {
 	Init()
+	fmt.Println(os.ExpandEnv("$USER"))
+
 	if auth(user, hostID, hostIDType, action) {
 		fmt.Print("1")
 	} else {
