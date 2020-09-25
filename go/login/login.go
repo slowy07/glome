@@ -41,6 +41,10 @@ var (
 	ErrInvalidPrefixType = fmt.Errorf("invalid prefix type")
 	// ErrIncorrectTag denotes that received tag is incorrect.
 	ErrIncorrectTag = fmt.Errorf("invalid tag")
+	// ErrIncorrectTag denotes that the response is not initialized.
+	ErrResponseNotInitialized = fmt.Errorf("response is not initialized")
+	// ErrIncorrectTag server key not found.
+	ErrServerKeyNotFound = fmt.Errorf("server key not found")
 )
 
 var (
@@ -142,7 +146,7 @@ func (r *URLResponse) ValidateAuthCode(tag []byte) bool {
 
 // Returns the tag corresponding to the Msg.
 func (r *URLResponse) GetTag() []byte {
-	u, _ := url.PathUnescape(string(r.Msg.Construct())) // ignore error as it is correctly escaped in r.Msg.Construct()
+	u, _ := url.PathUnescape(string(r.Msg.Construct())) // ignore error as the message is correctly escaped in r.Msg.Construct()
 	return r.d.Tag([]byte(u), 0)
 }
 
@@ -192,12 +196,16 @@ func (c *Client) constructHandshake() string {
 }
 
 // Validates if the received tag corresponding to the base64-url encoded message constructed from the Message.
-func (c *Client) ValidateAuthCode(tag string) bool {
+func (c *Client) ValidateAuthCode(tag string) (bool, error) {
 	dTag, err := base64.URLEncoding.DecodeString(completeBase64S(tag))
 	if err != nil {
-		return false
+		return false, err
 	}
-	return c.response.ValidateAuthCode(dTag)
+
+	if c.response == nil {
+		return false, ErrResponseNotInitialized
+	}
+	return c.response.ValidateAuthCode(dTag), nil
 }
 
 // Completes the base64 string with padding if it was truncated and couldn't be correctly decoded.
@@ -223,7 +231,7 @@ func (c *Client) getResponse() *URLResponse {
 
 // Server side glome-login lib handler. Receives the server's private key fetcher function.
 type Server struct {
-	KeyFetcher func(uint8) glome.PrivateKey
+	KeyFetcher func(uint8) (glome.PrivateKey, error)
 }
 
 // Parses the url, checks whether it is formed correctly and validates the client's tag, received from the URL.
@@ -251,7 +259,11 @@ func (s *Server) ParseURLResponse(url string) (*URLResponse, error) {
 		return nil, err
 	}
 	response.HandshakeInfo = *handshake
-	serverPrivKey := s.KeyFetcher(response.HandshakeInfo.Prefix)
+	serverPrivKey, err := s.KeyFetcher(response.HandshakeInfo.Prefix)
+
+	if err != nil {
+		return nil, ErrServerKeyNotFound
+	}
 	response.d, err = serverPrivKey.TruncatedExchange(&response.HandshakeInfo.UserKey, 1) // TODO: receive m as param?
 	if err != nil {
 		return nil, err
