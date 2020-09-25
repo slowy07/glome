@@ -17,7 +17,6 @@ package cmd
 import (
 	"bytes"
 	"encoding/hex"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"os/exec"
@@ -26,7 +25,6 @@ import (
 	"../../../../glome"
 	"../../../server"
 
-	lua "github.com/Shopify/go-lua"
 	"gopkg.in/yaml.v2"
 )
 
@@ -73,14 +71,14 @@ func updateKeys(unformatedKeys map[string]yamlkey, b *server.LoginServer) {
 	b.Keys.DropAllReplace(formatedKeys)
 }
 
-func executeBinary(path string) server.AuthorizerFunc {
-	return server.AuthorizerFunc(func(user string, hostID string, hostIDType string, action string) (bool, error) {
-		p, err := exec.LookPath(path)
-		if err != nil {
-			log.Fatalf("Could not find binary in %#v", path)
-		}
+func openBinary(path string) server.AuthorizerFunc {
+	p, err := exec.LookPath(path)
+	if err != nil {
+		log.Fatalf("Could not find binary in %#v", path)
+	}
 
-		cmd := exec.Command(p, user, hostID, hostIDType, action)
+	return server.AuthorizerFunc(func(user string, hostID string, hostIDType string, action string) (bool, error) {
+		cmd := exec.Command(p, "-u", user, "-h", hostID, "-ht", hostIDType, "-a", action)
 		cmd.Stdin = strings.NewReader("")
 
 		var out bytes.Buffer
@@ -90,8 +88,9 @@ func executeBinary(path string) server.AuthorizerFunc {
 		if err != nil {
 			log.Fatal(err)
 		}
+		s := out.String()
 
-		if out.String() == "1" {
+		if s == "1" {
 			return true, nil
 		} else {
 			return false, nil

@@ -71,8 +71,6 @@ func Init() {
 
 func main() {
 	Init()
-
-	fmt.Printf("user: %#v; hostID: %#v, hostIDType: %#v; action: %#v", user, hostID, hostIDType, action)
 	if auth(user, hostID, hostIDType, action) {
 		fmt.Print("1")
 	} else {

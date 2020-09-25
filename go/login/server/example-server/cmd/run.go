@@ -51,7 +51,7 @@ For more information read --help option.`)
 		os.Exit(0)
 	}
 
-	srv, err := server.NewLoginServer(openLua(script))
+	srv, err := server.NewLoginServer(openBinary(script))
 	if err != nil {
 		log.Fatalf("Error creating new server: %v.", err.Error())
 	}
@@ -68,7 +68,7 @@ For more information read --help option.`)
 func init() {
 	runCmd.Flags().StringVarP(&keys, "key", "k", "", "[mandaroty] location of the key file")
 	runCmd.Flags().StringVarP(&addr, "addr", "a", "", "[mandatory] address to serve")
-	runCmd.Flags().StringVarP(&script, "script", "s", "", "[mandatory] location of authorization script")
+	runCmd.Flags().StringVarP(&script, "script", "s", "", "[mandatory] location of authorization script binary")
 	runCmd.Flags().StringVarP(&userHeader, "user-header", "u", "authenticated-user",
 		"user header from which to read the user information")
 	runCmd.Flags().IntVarP(&responseLen, "response-length", "r", glome.MaxTagSize,
@@ -80,7 +80,7 @@ func handleSignals(sig chan os.Signal, srv *server.LoginServer) {
 		s := <-sig
 		switch s {
 		case syscall.SIGHUP:
-			srv.Authorizer(openLua(script))
+			srv.Authorizer(openBinary(script))
 			updateKeys(readKeys(keys), srv)
 		}
 	}
