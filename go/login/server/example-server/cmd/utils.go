@@ -15,9 +15,13 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/hex"
+	"fmt"
 	"io/ioutil"
 	"log"
+	"os/exec"
+	"strings"
 
 	"../../../../glome"
 	"../../../server"
@@ -69,31 +73,28 @@ func updateKeys(unformatedKeys map[string]yamlkey, b *server.LoginServer) {
 	b.Keys.DropAllReplace(formatedKeys)
 }
 
-func openLua(filename string) server.AuthorizerFunc {
+func executeBinary(path string) server.AuthorizerFunc {
 	return server.AuthorizerFunc(func(user string, hostID string, hostIDType string, action string) (bool, error) {
-		L := lua.NewState()
-
-		lua.OpenLibraries(L)
-		if err := lua.DoFile(L, filename); err != nil {
-			log.Fatalf("Error loading file: %s", err)
+		p, err := exec.LookPath(path)
+		if err != nil {
+			log.Fatalf("Could not find binary in %#v", path)
 		}
 
-		L.Global("auth")
-		defer L.Remove(-1)
+		cmd := exec.Command(p, user, hostID, hostIDType, action)
+		cmd.Stdin = strings.NewReader("")
 
-		if !L.IsFunction(-1) {
-			log.Fatalf("Provided file %v does not contains function auth", filename)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+
+		err = cmd.Run()
+		if err != nil {
+			log.Fatal(err)
 		}
 
-		L.PushString(user)
-		L.PushString(hostID)
-		L.PushString(hostIDType)
-		L.PushString(action)
-		if err := L.ProtectedCall(4, 1, 0); err != nil {
-			log.Fatalf("Lua error in auth function: %#v\n", err)
+		if out.String() == "1" {
+			return true, nil
+		} else {
+			return false, nil
 		}
-
-		result := L.ToBoolean(-1)
-		return result, nil
 	})
 }

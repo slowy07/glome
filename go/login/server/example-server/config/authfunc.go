@@ -61,14 +61,18 @@ func auth(user string, hostID string, hostIDType string, action string) bool {
 }
 
 // init function initializes flags
-func init() {
+func Init() {
 	flag.StringVar(&user, "u", "", "name of the user to authorize")
 	flag.StringVar(&hostID, "h", "", "id of the host to authorize")
 	flag.StringVar(&hostIDType, "ht", "", "type of the host to authorize")
 	flag.StringVar(&action, "a", "", "action to authorize")
+	flag.Parse()
 }
 
 func main() {
+	Init()
+
+	fmt.Printf("user: %#v; hostID: %#v, hostIDType: %#v; action: %#v", user, hostID, hostIDType, action)
 	if auth(user, hostID, hostIDType, action) {
 		fmt.Print("1")
 	} else {
