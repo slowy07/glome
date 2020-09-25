@@ -20,8 +20,8 @@
 package main
 
 import (
-	"flag"
 	"fmt"
+	"os"
 )
 
 var (
@@ -30,11 +30,6 @@ var (
 	GeneralUser     = Set("", "pedro")
 	SpecialUser     = Set("admin")
 	Commands        = Set("shell/root", "reboot")
-
-	user       string
-	hostID     string
-	hostIDType string
-	action     string
 )
 
 // Sugar syntax for set
@@ -60,22 +55,11 @@ func auth(user string, hostID string, hostIDType string, action string) bool {
 	return false
 }
 
-// init function initializes flags
-func Init() {
-	flag.StringVar(&user, "u", "", "name of the user to authorize")
-	flag.StringVar(&hostID, "h", "", "id of the host to authorize")
-	flag.StringVar(&hostIDType, "ht", "", "type of the host to authorize")
-	flag.StringVar(&action, "a", "", "action to authorize")
-	flag.Parse()
-}
-
 func main() {
-	Init()
-	fmt.Println(os.ExpandEnv("$USER"))
-
-	if auth(user, hostID, hostIDType, action) {
+	if auth(os.Getenv("USER"), os.Getenv("HOSTID"), os.Getenv("HOSTIDTYPE"), os.Getenv("ACTION")) {
 		fmt.Print("1")
 	} else {
 		fmt.Print("0")
 	}
+
 }

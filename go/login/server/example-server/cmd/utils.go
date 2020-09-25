@@ -17,6 +17,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/hex"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os/exec"
@@ -78,8 +79,14 @@ func openBinary(path string) server.AuthorizerFunc {
 	}
 
 	return server.AuthorizerFunc(func(user string, hostID string, hostIDType string, action string) (bool, error) {
-		cmd := exec.Command(p, "-u", user, "-h", hostID, "-ht", hostIDType, "-a", action)
+		cmd := exec.Command(p)
 		cmd.Stdin = strings.NewReader("")
+		cmd.Env = []string{
+			fmt.Sprintf("USER=%v", user),
+			fmt.Sprintf("HOSTID=%v", hostID),
+			fmt.Sprintf("HOSTIDTYPE=%v", hostIDType),
+			fmt.Sprintf("ACTION=%v", action),
+		}
 
 		var out bytes.Buffer
 		cmd.Stdout = &out
