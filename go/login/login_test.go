@@ -17,23 +17,12 @@ package login
 import (
 	"encoding/hex"
 	"fmt"
-	"strconv"
 	"testing"
 
 	"github.com/google/glome/go/glome"
 )
 
-const (
-	tvsCnt = 2
-)
-
 var serviceKeyIds = []uint8{1, 0}
-
-func handleError(e error, t *testing.T) {
-	if e != nil {
-		t.Fatalf("Unexpected Error: " + e.Error())
-	}
-}
 
 type testVector struct {
 	kap        []byte
@@ -52,7 +41,7 @@ type testVector struct {
 	token      string
 }
 
-type KeyPair struct {
+type keyPair struct {
 	priv glome.PrivateKey
 	pub  glome.PublicKey
 }
@@ -65,30 +54,37 @@ func decodeString(s string) []byte {
 	return b
 }
 
-func keys(t *testing.T, kp []byte, k []byte) *KeyPair {
+func keys(t *testing.T, kp []byte, k []byte) *keyPair {
 	aPriv, err := glome.PrivateKeyFromSlice(kp)
-	handleError(err, t)
+	if err != nil {
+		t.Fatalf("PrivateKeyFromSlice failed: %v", err)
+	}
+
 	aPub, err := glome.PublicKeyFromSlice(k)
-	handleError(err, t)
-	return &KeyPair{*aPriv, *aPub}
+	if err != nil {
+		t.Fatalf("PublicKeyFromSlice failed: %v", err)
+	}
+
+	return &keyPair{*aPriv, *aPub}
 }
 
-func (tv *testVector) Dialog(t *testing.T) (*glome.Dialog, *glome.Dialog) {
+func (tv *testVector) dialog(t *testing.T) (*glome.Dialog, *glome.Dialog) {
 	clientKP := keys(t, tv.kap, tv.ka)
 	serverKP := keys(t, tv.kbp, tv.kb)
 
 	sending, err := clientKP.priv.Exchange(&serverKP.pub)
-	handleError(err, t)
+	if err != nil {
+		t.Fatalf("Client key exchange failed: %v", err)
+	}
 	receiving, err := serverKP.priv.Exchange(&clientKP.pub)
-	handleError(err, t)
+	if err != nil {
+		t.Fatalf("Server key exchange failed: %v", err)
+	}
 
 	return sending, receiving
 }
 
-func testVectors() []testVector {
-	prefix1, _ := strconv.Atoi("1")
-	prefix2, _ := strconv.Atoi("0x51")
-
+func testVectors(t *testing.T) []testVector {
 	return []testVector{
 		{
 			kap:        decodeString("77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a"),
@@ -96,7 +92,7 @@ func testVectors() []testVector {
 			kbp:        decodeString("5dab087e624a8a4b79e17f8b83800ee66f3bb1292618b6fd1c2f8b27ff88e0eb"),
 			kb:         decodeString("de9edb7d7b7dc1b4d35b61c2ece435373f8343c85b78674dadfc7e146f882b4f"),
 			ks:         decodeString("4a5d9d5ba4ce2de1728e3bf480350f25e07e21c947d19e3376f09b3c1e161742"),
-			prefix:     byte(prefix1),
+			prefix:     byte(1),
 			hostIdType: "",
 			hostId:     "my-server.local",
 			action:     "shell/root",
@@ -113,7 +109,7 @@ func testVectors() []testVector {
 			kbp:        decodeString("fee1deadfee1deadfee1deadfee1deadfee1deadfee1deadfee1deadfee1dead"),
 			kb:         decodeString("872f435bb8b89d0e3ad62aa2e511074ee195e1c39ef6a88001418be656e3c376"),
 			ks:         decodeString("4b1ee05fcd2ae53ebe4c9ec94915cb057109389a2aa415f26986bddebf379d67"),
-			prefix:     byte(prefix2),
+			prefix:     byte(0x51),
 			hostIdType: "serial-number",
 			hostId:     "1234567890=ABCDFGH/#?",
 			action:     "reboot",
@@ -126,16 +122,16 @@ func testVectors() []testVector {
 	}
 }
 
-func ClientsAndServers(t *testing.T) ([]Client, []Server) {
-	tvs := testVectors()
-	var keyPairs [tvsCnt][]KeyPair
+func clientsAndServers(t *testing.T) ([]Client, []Server) {
+	tvs := testVectors(t)
+	keyPairs := make([][]keyPair, len(tvs))
 	for i, tv := range tvs {
 		keyPairs[i] = append(keyPairs[i], *keys(t, tv.kap, tv.ka), *keys(t, tv.kbp, tv.kb))
 	}
 
 	var clients []Client
 	var servers []Server
-	for tv := 0; tv < tvsCnt; tv++ {
+	for tv := 0; tv < len(tvs); tv++ {
 		clients = append(clients, *NewClient(keyPairs[tv][1].pub, keyPairs[tv][0].priv, serviceKeyIds[tv]))
 		sPrivKey := keyPairs[tv][1].priv
 		servers = append(servers,
@@ -147,15 +143,15 @@ func ClientsAndServers(t *testing.T) ([]Client, []Server) {
 }
 
 func TestCheckCorrectURLs(t *testing.T) {
-	_, servers := ClientsAndServers(t)
+	_, servers := clientsAndServers(t)
 	var responses []URLResponse
-	tvs := testVectors()
+	tvs := testVectors(t)
 
 	for i, tv := range tvs {
 		t.Run("Test vector "+fmt.Sprint(i+1), func(t *testing.T) {
-			resp, err := servers[i].ParseURLResponse(tv.url)
+			resp, err := servers[i].ParseURLResponse(tv.url + "dd")
 			if err != nil {
-				t.Fatalf("TestCheckCorrectURLs failed for test vector %d. Expected: parsed URL, got: %v", i, err)
+				t.Fatalf("TestCheckCorrectURLs failed for test vector %d. Expected: parsed URL, got: %#v.", i, err.Error())
 			}
 
 			responses = append(responses, *resp)
@@ -173,7 +169,7 @@ func TestCheckCorrectURLs(t *testing.T) {
 				{expected: tv.action, got: responses[i].Msg.Action},
 			} {
 				if k.expected != k.got {
-					t.Fatalf("TestCheckCorrectURLs failed for test vector %d. Expected: %v, got: %v", i, k.expected, k.got)
+					t.Fatalf("TestCheckCorrectURLs failed for test vector %d. Expected: %#v, got: %#v.", i, k.expected, k.got)
 				}
 			}
 		})
