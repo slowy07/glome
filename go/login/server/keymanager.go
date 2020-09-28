@@ -21,7 +21,8 @@ import (
 	"../../glome"
 )
 
-// ErrInvalidKeyIndex denotes that an invalid index was provided
+// ErrInvalidKeyIndex denotes that provided index is invalid for a key. Only
+// indexes in range 0-127 are valid.
 type ErrInvalidKeyIndex struct {
 	Index uint8
 }
@@ -30,7 +31,8 @@ func (e ErrInvalidKeyIndex) Error() string {
 	return fmt.Sprintf("key index should be in range 0-127, found: %v", e.Index)
 }
 
-// ErrOverloadedKeyIndex denotes that an invalid index is already in use
+// ErrOverloadedKeyIndex denotes that provided index is already in use, so no
+// new keys can be assigned to it.
 type ErrOverloadedKeyIndex struct {
 	Index uint8
 }
@@ -39,7 +41,8 @@ func (e ErrOverloadedKeyIndex) Error() string {
 	return fmt.Sprintf("key index already in use, found: %v", e.Index)
 }
 
-// ErrKeyIndexNotFound denotes that an index was not found
+// ErrKeyIndexNotFound denotes that an index was not found, so no key can be
+// returned from it.
 type ErrKeyIndexNotFound struct {
 	Index uint8
 }
@@ -48,21 +51,21 @@ func (e ErrKeyIndexNotFound) Error() string {
 	return fmt.Sprintf("key index %v not found", e.Index)
 }
 
-// A PrivateKey represent a Private key for a login server. It is a pair composed of a private key
+// A PrivateKey represent a Private key for the login server. It is a pair composed of a private key
 // and its pairing index.
 type PrivateKey struct {
 	Value glome.PrivateKey
 	Index uint8
 }
 
-// A PublicKey represent a Service key for a login server. It is a pair composed of a public key
+// A PublicKey represent a Service key for the login server. It is a pair composed of a public key
 // and its pairing index.
 type PublicKey struct {
 	Value glome.PublicKey
 	Index uint8
 }
 
-// KeyManager performs key storing in a concurrent-safe way. It allows for constant
+// KeyManager performs key maneger task in a concurrent-safe way. It allows for constant
 // time search of keys by index.
 type KeyManager struct {
 	indexToPriv map[uint8]glome.PrivateKey
@@ -88,14 +91,16 @@ func (k *KeyManager) asyncAdd(key glome.PrivateKey, index uint8) error {
 	return nil
 }
 
-// Add adds provided key and index to the key manager.
+// Add adds provided key and index to the key manager. Raises ErrInvalidindex
+// if index provided is not in range 0-127 and ErrOverloadedIndex if index
+// provided was already in use.
 func (k *KeyManager) Add(key glome.PrivateKey, index uint8) error {
 	k.lock.Lock()
 	defer k.lock.Unlock()
 	return k.asyncAdd(key, index)
 }
 
-// ReadIndex returns the PrivateKey stored in the KeyManager for a index, or a
+// Read returns the PrivateKey stored in the KeyManager for a index, or a
 // zero-value PrivateKey if no PrivateKey is present. The ok result indicates
 // whether value was found in the KeyManager.
 func (k *KeyManager) Read(index uint8) (glome.PrivateKey, bool) {
@@ -124,14 +129,17 @@ func (k *KeyManager) DropAllReplace(keys []PrivateKey) error {
 	return nil
 }
 
-// ServiceKeys returns a copy of the public Keys being at use at this moment.
+// ServiceKeys returns a copy slice of the public Keys being at use at this moment by
+// the key manager.
 func (k *KeyManager) ServiceKeys() []PublicKey {
 	serviceKey := make([]PublicKey, len(k.publicKeys))
 	copy(serviceKey, k.publicKeys)
 	return serviceKey
 }
 
-// Implement function for communication with login library.
+// Return a function that implements key fetching. This returned function
+// returns ErrInvalidKeyIndex if index is not in range 0-127, and ErrIndexNotFound
+// if provided index does not match any key.
 func (k *KeyManager) keyFetcher() func(uint8) (glome.PrivateKey, error) {
 	return func(index uint8) (glome.PrivateKey, error) {
 		if !(0 <= index && index <= 127) {
