@@ -229,7 +229,8 @@ func (c *Client) getResponse() *URLResponse {
 	return c.response
 }
 
-// Server side glome-login lib handler. Receives the server's private key fetcher function.
+// Server side glome-login lib handler. Receives the server's private key fetcher function,
+// which returns an error if the key couldn't be calculated.
 type Server struct {
 	KeyFetcher func(uint8) (glome.PrivateKey, error)
 }
@@ -259,12 +260,12 @@ func (s *Server) ParseURLResponse(url string) (*URLResponse, error) {
 		return nil, err
 	}
 	response.HandshakeInfo = *handshake
-	serverPrivKey, err := s.KeyFetcher(response.HandshakeInfo.Prefix)
 
+	sPrivKey, err := s.KeyFetcher(handshake.Prefix)
 	if err != nil {
 		return nil, ErrServerKeyNotFound
 	}
-	response.d, err = serverPrivKey.TruncatedExchange(&response.HandshakeInfo.UserKey, 1) // TODO: receive m as param?
+	response.d, err = sPrivKey.TruncatedExchange(&handshake.UserKey, 1) // TODO: receive m as param?
 	if err != nil {
 		return nil, err
 	}
