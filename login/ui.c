@@ -63,16 +63,14 @@ static const char flags_help[] =
     "\n -i PATH   if set, the PATH must exist and contain '0\\n' (0x30 0x0a)"
     "\n           for the login to be permitted "
 
-    "\n -k KEY    use KEY as the hex-encoded service key (defaults to the "
-    "embedded key)"
+    "\n -k KEY    use hex-encoded KEY as the service key (defaults to key "
+    "from configuration file)"
 
     "\n -l PATH   use PATH instead of " DEFAULT_LOGIN_PATH
 
     "\n -u URL    use given URL prefix"
 
-    "\n -r USER   reboot the machine when user logs in as USER "
-    "(default: " DEFAULT_REBOOT_USER
-    ")"
+    "\n -r USER   reboot the machine when USER is entered as username"
 
     "\n -s        suppress syslog logging (default: false)"
 
@@ -92,7 +90,6 @@ int parse_args(login_config_t* config, int argc, char* argv[]) {
   memset(config, 0, sizeof(login_config_t));
 
   // Setting defaults.
-  config->reboot_user = DEFAULT_REBOOT_USER;
   config->login_path = DEFAULT_LOGIN_PATH;
   config->lockdown_path = NULL;
   config->url_prefix = NULL;
@@ -108,7 +105,7 @@ int parse_args(login_config_t* config, int argc, char* argv[]) {
     long l;
     switch (c) {
       case 'c':
-        config->config_file = optarg;
+        config->config_path = optarg;
         break;
       case 'd':
         errno = 0;
@@ -209,7 +206,8 @@ int postprocess_config(login_config_t* config) {
     return -1;
   }
 
-  if (strcmp(config->username, config->reboot_user) == 0) {
+  if (config->reboot_user != NULL && config->reboot_user[0] != '\0' &&
+      strcmp(config->username, config->reboot_user) == 0) {
     config->options |= REBOOT;
   }
   return 0;

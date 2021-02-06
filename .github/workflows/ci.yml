@@ -12,19 +12,28 @@ jobs:
   # See https://github.com/actions/virtual-environments#available-environments
   pr_presubmit:
     runs-on: ubuntu-18.04
+    strategy:
+      matrix:
+        container:
+        - "python:3.5-buster"
+        - "alpine:3.12"
     container:
-      image: "python:3.5-buster"
+      image: ${{ matrix.container }}
 
     steps:
     - uses: actions/checkout@v2
-    - name: install dependencies
+    - name: install Debian dependencies
+      if: ${{ matrix.container == 'python:3.5-buster' }}
       run: ./kokoro/rodete/fetch_dependencies.sh
+    - name: install Alpine dependencies
+      if: ${{ matrix.container == 'alpine:3.12' }}
+      run: ./kokoro/alpine/fetch_dependencies.sh
     - name: setup build directory
       run: meson build
     - name: build
       run: ninja -C build
     - name: test
-      run: meson test -C build
+      run: meson test --print-errorlogs -C build
     - name: install
       run: |
         DESTDIR=out meson install -C build
@@ -34,6 +43,7 @@ jobs:
         test -f build/out/usr/local/etc/glome/config
         test -f build/out/usr/local/include/glome.h
         # Dereference the library and check that it points to a valid file.
+        test -f build/out/usr/local/lib/libglome.so || \
         test -f build/out/usr/local/lib/x86_64-linux-gnu/libglome.so
 
   pr_code_format:
@@ -48,21 +58,10 @@ jobs:
         export DEBIAN_FRONTEND=noninteractive
         apt-get update
         apt-get install -y clang-format
-    - name: check libglome format
+    - name: check format
       run: |
-        clang-format --Werror --dry-run --style=google \
-          glome.c glome.h glome_test.c
-    - name: check glome-cli format
-      run: |
-        clang-format --Werror --dry-run --style=google \
-          cli/*.c cli/*.h
-    - name: check glome-login format
-      run: |
-        clang-format --Werror --dry-run --style=google \
-          login/config.c login/crypto.c login/crypto_test.c login/lockdown.c \
-          login/login.c login/login_test.c login/main.c login/ui.c \
-          login/base64.h login/config.h login/crypto.h login/lockdown.h \
-          login/login.h login/ui.h
+        find . -name "*.c" -or -name "*.h" | \
+          xargs clang-format --Werror --dry-run --style=google
 
   python_presubmit:
     runs-on: ubuntu-18.04
@@ -97,17 +96,27 @@ jobs:
     runs-on: ubuntu-18.04
     container:
       image: "golang:1.15.1-buster"
+    defaults:
+      run:
+        working-directory: go
     steps:
     - uses: actions/checkout@v2
-    - name: install dependencies from go get
+    - name: verify format
+      run: |
+        gofmt -d .
+        test "$(gofmt -d .)" = ""
+    - name: run golint
       run: |
         go get -u golang.org/x/lint/golint
-        go get -u golang.org/x/crypto/curve25519
-    - name: run gofmt test
-      run: gofmt -d go/glome/*.go
-    - name: run golint test
-      run: golint go/glome/*.go
+        golint -set_exit_status=1 ./...
     - name: run unit tests
-      run: |
-        cd go/glome
-        go test
+      run: go test ./...
+
+  shell_presubmit:
+    runs-on: ubuntu-18.04
+    container:
+      image: "koalaman/shellcheck-alpine:v0.7.1"
+    steps:
+    - uses: actions/checkout@v2
+    - name: test POSIX conformance and lint
+      run: find . -name "*.sh" | xargs shellcheck --shell=sh

@@ -16,6 +16,8 @@ Core libraries:
 
  - [libglome](glome.h) *C*
  - [PyGLOME](python) *Python*
+ - [jGLOME](java) *Java*
+ - [GLOME-Go](go/glome) *Go*
 
 Binaries:
 
@@ -34,6 +36,7 @@ Building the GLOME library requires
  - OpenSSL headers >=1.1.1
  - glib-2.0 (for glome-login as well as tests)
  - libconfuse (for glome-login)
+ - libpam (for PAM module)
 
 ### Instructions
 
